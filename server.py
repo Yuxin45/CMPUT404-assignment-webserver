@@ -1,5 +1,6 @@
 #  coding: utf-8 
 import socketserver, os
+from os import path
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,37 +31,73 @@ class MyWebServer(socketserver.BaseRequestHandler):
 	def handle(self):
 		self.data = self.request.recv(1024).strip()
 		print ("Got a request of: %s\n" % self.data)
+
 		
 		split_request = self.data.split()
-		request_method = split_request[0].decode('utf-8')
-		print("request method:", request_method)
-		file_url = split_request[1].decode('utf-8')[1:]
-		print("requested file url:", file_url)
+		reponse = ""
+		if len(split_request) >= 2:
+			request_method = split_request[0].decode('utf-8')
+			print("request method:", request_method)
+			new_url =  split_request[1].decode('utf-8')[1:]
+			file_url = ("/www/" + (split_request[1].decode('utf-8')))[1:]
 
-		file_content = self.obtain_file_content(file_url)
-		reponse = self.pack_http_response(request_method, file_url, file_content)
+			print("requested file url:", file_url)
+
+			if file_url.endswith('/'):
+				file_url += "index.html"
+				file_content = self.obtain_file_content(file_url)
+
+			else:
+				file_content = self.obtain_file_content(file_url)
+
+			reponse = self.pack_http_response(request_method, file_url, file_content)
 		self.request.sendall(bytearray(reponse,'utf-8'))
+
 
 	def pack_http_response(self, method, file_url, content):
 
 		if method == "GET":
-			if content == None:
-				response = "HTTP/1.1 404 Not Found\r\n\r\n"
+			if len(file_url.split("../")) >= 2:
+				content = self.obtain_file_content("www/404.html")
+				response = "HTTP/1.1 404 Not Found\r\n\r\n" + content
+				print(response)
+
+			elif path.isdir(file_url):
+				print("into 301")
+				# content = self.obtain_file_content("www/301.html")
+				content = self.obtain_moved_file(file_url)
+				response = "HTTP/1.1 301 Moved Permanently\r\n\r\n" + content
+				print(response)
+				# return response
+
+			elif content == None:
+				content = self.obtain_file_content("www/404.html")
+				response = "HTTP/1.1 404 Not Found\r\n\r\n" + content
+				print(response)
+				# return response
+				
+			# elif path.isdir(file_url):
+			# 	print("into 301")
+			# 	# content = self.obtain_file_content("www/301.html")
+			# 	content = self.obtain_moved_file(file_url)
+			# 	response = "HTTP/1.1 301 Moved Permanently\r\n\r\n" + content
+			# 	print(response)
+			# 	# return response
 
 			elif file_url.endswith(".css"):
 				response = "HTTP/1.1 200 OK \r\nContent-Type: text/css;\r\n\r\n" + content
-
-			elif file_url.endswith('/'):
+				print(response)
+				# return response
 
 			else:
 				response = "HTTP/1.1 200 OK\r\nContent-Type: text/html;\r\n\r\n" + content
+				print(response)
+				# return response
 
 		else:
 			response = "HTTP/1.1 405 Method Not Allowed\r\n\r\n"
-
+		print(response)
 		return response
-
-
 
 
 	def obtain_file_content(self, path):
@@ -72,9 +109,36 @@ class MyWebServer(socketserver.BaseRequestHandler):
 			return file_content
 
 		except BaseException as e:
-			print(str(e))
+			#print(str(e))
 			return None
 
+
+	def obtain_moved_file(self, file_url):
+		print("file_url: ", file_url)
+		directory = file_url.split('/')[-1] + "/index.html"
+		print("directory:", directory)
+		data = """<!DOCTYPE html>
+			<html>
+			<head>
+				<title>Page Moved Permanently</title>
+			        <meta http-equiv="Content-Type"
+			        content="text/html;charset=utf-8"/>
+			        <!-- check conformance at http://validator.w3.org/check -->
+			        <!-- <link rel="stylesheet" type="text/css" href="base.css"> -->
+			</head>
+
+			<body>
+				<div class="eg">
+					<h1>301 Moved Permanently</h1>
+					<ul>
+						<li>moved to here
+			                        <li><a href=""" + directory + """>go to correct page</a></li>
+					</ul>
+				</div>
+			</body>
+			</html> 
+			"""
+		return data
 
 
 if __name__ == "__main__":
