@@ -65,8 +65,8 @@ class MyWebServer(socketserver.BaseRequestHandler):
 			elif path.isdir(file_url):
 				print("into 301")
 				# content = self.obtain_file_content("www/301.html")
-				content = self.obtain_moved_file(file_url)
-				response = "HTTP/1.1 301 Moved Permanently\r\n\r\n" + content
+				content, directory = self.obtain_moved_file(file_url)
+				response = "HTTP/1.1 301 Moved Permanently\r\n" +"Location: " + directory + ";\r\n\r\n" + content
 				print(response)
 				# return response
 
@@ -115,7 +115,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
 	def obtain_moved_file(self, file_url):
 		print("file_url: ", file_url)
-		directory = file_url.split('/')[-1] + "/index.html"
+		directory = file_url.split('/')[-1] + '/'
 		print("directory:", directory)
 		data = """<!DOCTYPE html>
 			<html>
@@ -138,7 +138,8 @@ class MyWebServer(socketserver.BaseRequestHandler):
 			</body>
 			</html> 
 			"""
-		return data
+
+		return data, directory
 
 
 if __name__ == "__main__":
